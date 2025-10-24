@@ -16,24 +16,27 @@ import CareerDashboard from "../pages/hr/CareerDashboard";
 import AccountsDashboard from "../pages/hr/AccountsDashboard";
 import Login from "../pages/login.jsx";
 
-import JobList from "@/pages/hr/jobList";
-import JobDetails from "@/pages/hr/JobDetails"; // ✅ import added
-import Candidates from "@/pages/hr/Candidate";
+import JobList from "@/pages/hr/Job/JobList";
+import JobDetails from "@/pages/hr/Job/JobDetails";
+import Candidates from "@/pages/hr/Candidates/CandidatesList";
+import ApplicationsList from "@/pages/hr/Applications/Applications";
+import CandidateDetails from "@/pages/hr/Candidates/CandidateDetails";
 
+// Protected Route component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useAuth();
 
   if (!user || !allowedRoles.includes(user.role)) {
     return <Navigate to="/login" replace />;
   }
-  return <>{children}</>; // ✅ wrap children
+  return <>{children}</>;
 };
 
 const AppRoutes = () => {
   return (
     <Router>
       <Routes>
-        {/* Login */}
+        {/* Public routes */}
         <Route path="/login" element={<Login />} />
 
         {/* Admin Dashboard */}
@@ -48,19 +51,21 @@ const AppRoutes = () => {
           }
         />
 
-        {/* HR Career Dashboard */}
+        {/* HR Dashboard nested pages - protected */}
         <Route
-          path="/career-dashboard"
+          path="/career-dashboard/*"
           element={
             <ProtectedRoute allowedRoles={["HR"]}>
               <HRCareerLayout />
             </ProtectedRoute>
           }>
-          {/* Nested pages inside <Outlet /> */}
           <Route index element={<CareerDashboard />} />
           <Route path="job-list" element={<JobList />} />
           <Route path="job-list/:id" element={<JobDetails />} />
           <Route path="candidates" element={<Candidates />} />
+
+          <Route path="applications" element={<ApplicationsList />} />
+          <Route path="candidates/:id" element={<CandidateDetails />} />
         </Route>
 
         {/* HR Accounts Dashboard */}

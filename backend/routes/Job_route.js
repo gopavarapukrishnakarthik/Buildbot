@@ -18,6 +18,44 @@ router.get("/getJobs", async (req, res) => {
   res.json(jobs);
 });
 
+router.get("/getJob/:id", async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ message: "Job not found" });
+    res.json(job);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/getJobWithApplicants/:id", async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id).populate({
+      path: "applications",
+      populate: {
+        path: "candidateId",
+        select: "name email phone source resume",
+      },
+    });
+
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    res.json({
+      jobDetails: {
+        _id: job._id,
+        title: job.title,
+        department: job.department,
+        location: job.location,
+        status: job.status,
+        postedDate: job.postedDate,
+      },
+      applicants: job.applications || [],
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.put("/updateJob/:id", verifyToken, requireLead, async (req, res) => {
   try {
     const { id } = req.params;

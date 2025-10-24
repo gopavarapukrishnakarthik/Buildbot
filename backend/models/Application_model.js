@@ -23,13 +23,20 @@ const applicationSchema = new mongoose.Schema(
         note: { type: String },
       },
     ],
+    interview: {
+      interviewer: String,
+      interviewDate: Date,
+      meetLink: String,
+      notes: String,
+      emailSent: { type: Boolean, default: false },
+    },
     appliedAt: { type: Date, default: Date.now },
     notes: { type: String },
   },
   { timestamps: true }
 );
 
-// Initial Pending event
+// Add initial pending event on new document creation
 applicationSchema.pre("save", function (next) {
   if (this.isNew) {
     this.statusHistory.push({
@@ -41,24 +48,12 @@ applicationSchema.pre("save", function (next) {
   next();
 });
 
-// Virtual for frontend event timeline
+// Simplified virtual field (without labels)
 applicationSchema.virtual("events").get(function () {
-  const allEvents = [
-    { status: "Pending", label: "Application Submitted" },
-    { status: "Reviewed", label: "Profile Reviewed" },
-    { status: "Interviewed", label: "Interview Scheduled" },
-    { status: "Hired", label: "Offer Accepted" },
-    { status: "Rejected", label: "Application Rejected" },
-  ];
-
-  return allEvents.map((event) => {
-    const history = this.statusHistory.find((h) => h.status === event.status);
-    return {
-      status: event.status,
-      label: event.label,
-      date: history ? history.changedAt : null,
-    };
-  });
+  return this.statusHistory.map((h) => ({
+    status: h.status,
+    date: h.changedAt,
+  }));
 });
 
 applicationSchema.set("toJSON", { virtuals: true });

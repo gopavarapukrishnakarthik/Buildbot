@@ -71,18 +71,54 @@ router.post("/login", async (req, res) => {
     .json({
       message: `Welcome Back ${user.name}`,
       user,
+      token,
       success: true,
     });
 });
 
 router.post("/logout", (req, res) => {
   try {
-    return res.status(200).cookie("token", "", { maxAge: 0 }).json({
-      message: "Logout Sucessfull",
+    const token = req.cookies.token;
+
+    // 🔹 Check if token exists
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "No active session found. Please log in first.",
+      });
+    }
+
+    // 🔹 Verify and decode the token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired session. Please log in again.",
+      });
+    }
+
+    // 🔹 Extract user name for message
+    const userName = decoded.name || "User";
+
+    // 🔹 Clear token cookie
+    res.clearCookie("token", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false, // change to true if using HTTPS
+    });
+
+    return res.status(200).json({
       success: true,
+      message: `Logout successful, goodbye ${userName}!`,
     });
   } catch (error) {
-    console.log(error);
+    console.error("Logout error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error during logout",
+    });
   }
 });
 

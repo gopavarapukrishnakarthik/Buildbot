@@ -1,56 +1,86 @@
 import React from "react";
-import { Link, Outlet, useLocation, useParams } from "react-router-dom";
+import {
+  Link,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
+import logo from "../assets/logo.png";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
+  BreadcrumbList,
   BreadcrumbSeparator,
+  BreadcrumbPage,
+  BreadcrumbEllipsis,
 } from "@/components/ui/breadcrumb";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Home,
+  Briefcase,
+  Users,
+  FileText,
+  BarChart2,
+  Settings as SettingsIcon,
+} from "lucide-react";
+
+import AddJob from "@/pages/hr/Job/AddJob";
+import ApplyCandidate from "@/pages/hr/Candidates/Addcandidate";
 
 const sidebarItems = [
-  { name: "Dashboard", path: "/career-dashboard" },
-  { name: "Job Postings", path: "/career-dashboard/job-list" },
-  { name: "Candidates", path: "/career-dashboard/candidates" },
-  { name: "Applications", path: "/career-dashboard/applications" },
-  { name: "Analytics", path: "/career-dashboard/analytics" },
-  { name: "Settings", path: "/career-dashboard/settings" },
+  { name: "Dashboard", path: "/career-dashboard", icon: Home },
+  { name: "Job Postings", path: "/career-dashboard/job-list", icon: Briefcase },
+  { name: "Candidates", path: "/career-dashboard/candidates", icon: Users },
+  {
+    name: "Applications",
+    path: "/career-dashboard/applications",
+    icon: FileText,
+  },
+  { name: "Analytics", path: "/career-dashboard/analytics", icon: BarChart2 },
+  { name: "Settings", path: "/career-dashboard/settings", icon: SettingsIcon },
 ];
 
 export default function HRCareerLayout() {
   const { logout } = useAuth();
   const location = useLocation();
-  const params = useParams();
-  const pathParts = location.pathname.split("/").filter(Boolean);
+  const navigate = useNavigate();
+  const [openAddJob, setOpenAddJob] = React.useState(false);
+  const [openApplyCandidate, setopenApplyCandidate] = React.useState(false);
 
   const dynamicNames = {
     "job-list": "Job List",
     candidates: "Candidates",
+    applications: "Applications",
   };
-
-  // If we are on job detail page, show the job title instead of ID
-  if (params.id && pathParts.includes("job-list")) {
-    // In a real app, you’d fetch the job title from context or API
-    dynamicNames[params.id] = `Job #${params.id}`; // temporary placeholder
-  }
 
   const formatPart = (part) => {
     if (dynamicNames[part]) return dynamicNames[part];
-    if (!part) return ""; // fallback to empty string
+    if (!part) return "";
     return part
       .split("=")
       .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-      .join(" ");
+      .join("-");
   };
 
+  const pathParts = location.pathname.split("/").filter(Boolean);
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-fit bg-gray-50">
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-md flex flex-col p-4 fixed inset-y-0">
-        <div className="mb-6">
-          <img src="/logo.png" alt="Logo" className="w-10 h-10 mb-2" />
+        <div className="mb-8 m-4 flex flex-row gap-5">
+          <img src={logo} alt="Logo" className="w-10 h-10 mb-2" />
           <h2 className="text-lg font-bold text-gray-800">HR Portal</h2>
         </div>
 
@@ -59,60 +89,89 @@ export default function HRCareerLayout() {
             <Link
               key={item.name}
               to={item.path}
-              className={`px-4 py-2 rounded-lg hover:bg-[#F9AC25] hover:text-white ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-[#F9AC25] hover:text-white ${
                 location.pathname === item.path
                   ? "bg-[#F9AC25] text-white"
                   : "text-gray-700"
               }`}>
+              <item.icon className="w-5 h-5" />
               {item.name}
             </Link>
           ))}
         </nav>
 
-        <Button variant="outline" onClick={logout}>
+        <Button
+          variant="outline"
+          onClick={logout}
+          className="border-[#F9AC25] text-[#F9AC25] hover:bg-[#F9AC25] hover:text-white">
           Logout
         </Button>
       </aside>
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col ml-64 bg-[#E5E7EB] min-h-screen overflow-auto">
-        {/* HEADER: Breadcrumb + Search + Logout */}
+        {/* HEADER: Breadcrumb + Search */}
         <header className="flex items-center justify-between bg-white border-b px-6 py-3 shadow-sm sticky top-0 z-10">
-          {/* Breadcrumb */}
           <Breadcrumb>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to="/career-dashboard">Dashboard</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/career-dashboard">Dashboard</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
 
-            {pathParts.slice(1).map((part, idx) => (
-              <React.Fragment key={idx}>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link to={`/${pathParts.slice(0, idx + 2).join("/")}`}>
-                      {formatPart(part)}
-                    </Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-              </React.Fragment>
-            ))}
+              {pathParts.length > 2 && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1">
+                        <BreadcrumbEllipsis className="size-4" />
+                        <span className="sr-only">Toggle menu</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {pathParts.slice(1, -1).map((part, idx) => (
+                          <DropdownMenuItem
+                            key={idx}
+                            onClick={() =>
+                              navigate(
+                                `/${pathParts.slice(0, idx + 2).join("/")}`
+                              )
+                            }>
+                            {formatPart(part)}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </BreadcrumbItem>
+                </>
+              )}
+
+              {pathParts.length > 1 && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link
+                        to={`/${pathParts
+                          .slice(0, pathParts.length)
+                          .join("/")}`}>
+                        {formatPart(pathParts[pathParts.length - 1])}
+                      </Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                </>
+              )}
+            </BreadcrumbList>
           </Breadcrumb>
 
-          {/* Right Side: Search + Logout */}
+          {/* Right Side Search */}
           <div className="flex items-center gap-3">
             <Input
               type="text"
               placeholder="Search..."
               className="w-64 border-gray-300 focus:ring-2 focus:ring-[#F9AC25]"
             />
-            <Button
-              variant="outline"
-              onClick={logout}
-              className="border-[#F9AC25] text-[#F9AC25] hover:bg-[#F9AC25] hover:text-white">
-              Logout
-            </Button>
           </div>
         </header>
 
@@ -126,14 +185,32 @@ export default function HRCareerLayout() {
           </div>
 
           <div className="flex gap-3">
-            <Button className="bg-[#2563EB] hover:bg-[#1E40AF] text-white">
+            <Button
+              className="bg-[#2563EB] hover:bg-[#1E40AF] text-white"
+              onClick={() => setOpenAddJob(true)}>
               + New Job
             </Button>
-            <Button className="bg-[#F9AC25] hover:bg-[#D97706] text-white">
-              Import Candidates
+            <Button
+              className="bg-[#F9AC25] hover:bg-[#D97706] text-white"
+              onClick={() => setopenApplyCandidate(true)}>
+              Add Candidates
             </Button>
           </div>
         </div>
+
+        {/* Add Job Modal */}
+        <Dialog open={openAddJob} onOpenChange={setOpenAddJob}>
+          <DialogContent className="max-w-xl h-fit">
+            <AddJob onSuccess={() => setOpenAddJob(false)} />
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Candidate Modal */}
+        <Dialog open={openApplyCandidate} onOpenChange={setopenApplyCandidate}>
+          <DialogContent className="max-w-xl h-fit">
+            <ApplyCandidate onSuccess={() => setopenApplyCandidate(false)} />
+          </DialogContent>
+        </Dialog>
 
         {/* Dynamic Page Content */}
         <main className="p-6 flex-1">

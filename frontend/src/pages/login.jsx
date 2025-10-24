@@ -74,7 +74,7 @@ export default function Login() {
               alt="Company Logo"
               className="w-6 h-6 object-contain rounded-sm "
             />
-            <h2 className="text-xl font-bold">Buildbot Management portal</h2>
+            <h2 className="text-xl font-bold">Management portal</h2>
           </div>
           <h2 className="text-2xl">Welcome back</h2>
           <p className="text-xs mb-4 text-gray-400">

@@ -21,14 +21,29 @@ const jobSchema = new mongoose.Schema(
       default: "Onsite",
     },
     salaryRange: { type: String, trim: true },
-    jobDescription: { type: String, required: true },
+    description: { type: String, required: true },
     requiredSkills: { type: [String], default: [] },
     niceToHaveSkills: { type: [String], default: [] },
     targetStartDate: { type: String, trim: true }, // or Date if you want calendar date
     postedDate: { type: Date, default: Date.now },
     immediateJoiner: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: ["open", "paused", "closed"],
+      default: "open",
+    },
   },
   { timestamps: true }
 );
+
+jobSchema.virtual("applications", {
+  ref: "Application",
+  localField: "_id",
+  foreignField: "jobId",
+});
+
+// Allow virtuals in JSON/Object outputs
+jobSchema.set("toJSON", { virtuals: true });
+jobSchema.set("toObject", { virtuals: true });
 
 module.exports = mongoose.model("Job", jobSchema);
