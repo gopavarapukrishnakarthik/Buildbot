@@ -4,6 +4,8 @@ const Application = require("../models/Application_model.js");
 const Candidate = require("../models/Candidate_model.js");
 const cloudinary = require("../utils/cloudinary");
 const streamifier = require("streamifier");
+const nodemailer = require("nodemailer");
+// const { createCalendarEvent } = require("../utils/googleCalendar");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -163,72 +165,48 @@ router.post(
   }
 );
 
-const nodemailer = require("nodemailer");
-
 router.post("/:id/scheduleInterview", async (req, res) => {
+  const { id } = req.params;
+  const { interviewer, interviewDate, meetLink, notes } = req.body;
+
+  // 1️⃣ Validate required fields
+  if (!interviewer || !interviewDate || !meetLink) {
+    return res
+      .status(400)
+      .json({ message: "Interviewer, date, and link are required" });
+  }
+
   try {
-    const { id } = req.params;
-    const { interviewer, interviewDate, meetLink, notes } = req.body;
+    // 2️⃣ Find the application
+    const application = await Application.findById(id);
+    if (!application)
+      return res.status(404).json({ message: "Application not found" });
 
-    const app = await Application.findById(id).populate("candidateId jobId");
-    if (!app) return res.status(404).json({ message: "Application not found" });
-
-    // Update interview info
-    app.interview = {
+    // 3️⃣ Update interview details
+    application.interview = {
       interviewer,
-      interviewDate,
+      interviewDate: new Date(interviewDate),
       meetLink,
-      notes,
-      emailSent: false,
+      notes: notes || "",
     };
 
-    // Update status to Interviewed
-    app.status = "Interviewed";
-    app.statusHistory.push({
-      status: "Interviewed",
-      changedAt: new Date(),
-      note: "Interview scheduled",
-    });
+    // 4️⃣ Optionally, update status to "Interviewed"
+    application.status = "Interviewed";
 
-    await app.save();
+    // 5️⃣ Save changes
+    await application.save();
 
-    // Send email to candidate
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    // 6️⃣ Optional: send email to candidate
+    // await sendEmail({
+    //   to: application.candidateId.email,
+    //   subject: `Interview Scheduled for ${application.jobId.title}`,
+    //   text: `Hello ${application.candidateId.name},\nYour interview with ${interviewer} is scheduled at ${interviewDate}. Meet link: ${meetLink}`
+    // });
 
-    const mailOptions = {
-      from: `"HR Team" <${process.env.EMAIL_USER}>`,
-      to: app.candidateId.email,
-      subject: `Interview Scheduled for ${app.jobId.title}`,
-      html: `
-        <p>Dear ${app.candidateId.name},</p>
-        <p>Your interview for the position <b>${app.jobId.title}</b> has been scheduled.</p>
-        <ul>
-          <li><b>Date:</b> ${new Date(interviewDate).toLocaleString()}</li>
-          <li><b>Interviewer:</b> ${interviewer}</li>
-          <li><b>Meeting Link:</b> <a href="${meetLink}">${meetLink}</a></li>
-        </ul>
-        <p>${notes || ""}</p>
-        <p>Best Regards,<br/>Recruitment Team</p>
-      `,
-    };
-
-    await transporter.sendMail(mailOptions);
-    app.interview.emailSent = true;
-    await app.save();
-
-    res.json({
-      message: "Interview scheduled and email sent successfully",
-      application: app,
-    });
+    res.json({ message: "Interview scheduled", application });
   } catch (err) {
     console.error("Error scheduling interview:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Server error" });
   }
 });
 

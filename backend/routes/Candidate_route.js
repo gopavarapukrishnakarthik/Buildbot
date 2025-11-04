@@ -4,9 +4,38 @@ const Candidate = require("../models/Candidate_model.js");
 const Application = require("../models/Application_model.js");
 const cloudinary = require("../utils/cloudinary");
 const streamifier = require("streamifier");
+const nodemailer = require("nodemailer");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // store file in memory
+
+// -------------------- Constants --------------------
+
+// Nodemailer transporter
+const EMAIL_TRANSPORTER = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.USER_EMAIL,
+    pass: process.env.USER_PASSWORD,
+  },
+});
+
+// Function to send status email
+const sendStatusEmail = async (email, name, status) => {
+  const mailOptions = {
+    from: process.env.USER_EMAIL,
+    to: email,
+    subject: "Application Status Update",
+    html: `<p>Dear ${name},</p>
+           <p>Your application status has been updated to: <strong>${status}</strong>.</p>
+           <p>Thank you,</p>
+           <p>The Recruitment Team</p>`,
+  };
+
+  await EMAIL_TRANSPORTER.sendMail(mailOptions);
+};
 
 // Helper function to upload file buffer to Cloudinary
 const uploadToCloudinary = (fileBuffer, folder = "resumes") => {
@@ -21,6 +50,8 @@ const uploadToCloudinary = (fileBuffer, folder = "resumes") => {
     streamifier.createReadStream(fileBuffer).pipe(stream);
   });
 };
+
+// -------------------- Routes --------------------
 
 // Apply route
 router.post("/apply", upload.single("resume"), async (req, res) => {
@@ -37,9 +68,7 @@ router.post("/apply", upload.single("resume"), async (req, res) => {
     let candidate = await Candidate.findOne({ email });
     let resumeLink = "";
 
-    if (file) {
-      resumeLink = await uploadToCloudinary(file.buffer);
-    }
+    if (file) resumeLink = await uploadToCloudinary(file.buffer);
 
     if (!candidate) {
       candidate = new Candidate({
@@ -85,39 +114,6 @@ router.post("/apply", upload.single("resume"), async (req, res) => {
   }
 });
 
-// Manual candidate creation
-router.post("/createCandidate", upload.single("resume"), async (req, res) => {
-  try {
-    const { name, email, phone } = req.body;
-    const file = req.file;
-
-    if (!name || !email)
-      return res.status(400).json({ message: "Name and email are required" });
-
-    let candidate = await Candidate.findOne({ email });
-    if (candidate)
-      return res.status(400).json({ message: "Candidate already exists" });
-
-    let resumeLink = "";
-    if (file) resumeLink = await uploadToCloudinary(file.buffer);
-
-    candidate = new Candidate({
-      name,
-      email,
-      phone,
-      score,
-      resume: resumeLink,
-      source: "manual",
-    });
-    await candidate.save();
-
-    res.status(201).json(candidate);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Get all candidates
 router.get("/getCandidates", async (req, res) => {
   try {
     // Get all candidates
@@ -280,6 +276,25 @@ router.get("/getCandidatesWithApplications", async (req, res) => {
   } catch (err) {
     console.error("Error fetching candidates with applications:", err);
     res.status(500).json({ message: err.message });
+  }
+});
+
+// Send application status email
+router.post("/sendStatusEmail", async (req, res) => {
+  try {
+    const { email, name, status } = req.body;
+    if (!email || !name || !status) {
+      return res
+        .status(400)
+        .json({ message: "Email, name, and status are required" });
+    }
+
+    await sendStatusEmail(email, name, status);
+
+    res.status(200).json({ message: "Status email sent successfully" });
+  } catch (err) {
+    console.error("Error sending status email:", err);
+    res.status(500).json({ message: "Failed to send email" });
   }
 });
 

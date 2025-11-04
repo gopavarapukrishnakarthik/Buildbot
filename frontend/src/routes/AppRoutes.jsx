@@ -22,6 +22,10 @@ import Candidates from "@/pages/hr/Candidates/CandidatesList";
 import ApplicationsList from "@/pages/hr/Applications/Applications";
 import CandidateDetails from "@/pages/hr/Candidates/CandidateDetails";
 
+import EmployeeList from "@/pages/hr/Accounts/Employees/EmployeeList";
+import PayrollScreen from "@/pages/hr/Accounts/Payroll/PayrollScreen";
+import CircularsScreen from "@/pages/hr/Accounts/Circulars/Circulars";
+
 // Protected Route component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useAuth();
@@ -70,15 +74,23 @@ const AppRoutes = () => {
 
         {/* HR Accounts Dashboard */}
         <Route
-          path="/accounts-dashboard"
+          path="/accounts-dashboard/*"
           element={
             <ProtectedRoute allowedRoles={["HR"]}>
-              <HRAccountsLayout>
-                <AccountsDashboard />
-              </HRAccountsLayout>
+              <HRAccountsLayout />
             </ProtectedRoute>
-          }
-        />
+          }>
+          <Route index element={<AccountsDashboard />} />
+          <Route path="employees-list" element={<EmployeeList />} />
+          <Route path="payroll" element={<PayrollScreen />} />
+          <Route path="circular" element={<CircularsScreen />} />
+
+          {/* <Route path="job-list/:id" element={<JobDetails />} />
+          <Route path="candidates" element={<Candidates />} />
+
+          <Route path="applications" element={<ApplicationsList />} />
+          <Route path="candidates/:id" element={<CandidateDetails />} /> */}
+        </Route>
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/login" replace />} />

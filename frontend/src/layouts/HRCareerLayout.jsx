@@ -27,27 +27,35 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
-  Home,
   Briefcase,
   Users,
-  FileText,
-  BarChart2,
   Settings as SettingsIcon,
+  LayoutDashboard,
+  Inbox,
+  Sparkles,
+  ChartLine,
+  ClipboardCheck,
 } from "lucide-react";
 
 import AddJob from "@/pages/hr/Job/AddJob";
 import ApplyCandidate from "@/pages/hr/Candidates/Addcandidate";
 
 const sidebarItems = [
-  { name: "Dashboard", path: "/career-dashboard", icon: Home },
+  { name: "Dashboard", path: "/career-dashboard", icon: LayoutDashboard },
   { name: "Job Postings", path: "/career-dashboard/job-list", icon: Briefcase },
   { name: "Candidates", path: "/career-dashboard/candidates", icon: Users },
   {
     name: "Applications",
     path: "/career-dashboard/applications",
-    icon: FileText,
+    icon: Inbox,
   },
-  { name: "Analytics", path: "/career-dashboard/analytics", icon: BarChart2 },
+  {
+    name: "Recrutment",
+    path: "/career-dashboard/recrutment",
+    icon: ClipboardCheck,
+  },
+
+  { name: "Analytics", path: "/career-dashboard/analytics", icon: ChartLine },
   { name: "Settings", path: "/career-dashboard/settings", icon: SettingsIcon },
 ];
 
@@ -176,17 +184,20 @@ export default function HRCareerLayout() {
         </header>
 
         {/* Overview cards */}
-        <div className="bg-white flex flex-row m-3 p-5 justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">Welcome back, HR</h1>
-            <p className="text-gray-500 text-sm">
-              Monitor postings, candidates, and pipeline at a glance.
-            </p>
+        <div className="bg-white flex flex-row m-5 -mb-1 p-5 justify-between rounded-2xl">
+          <div className="flex flex-row">
+            <Sparkles className="w-8 h-8 m-2 text-yellow-500" />
+            <div>
+              <h1 className="text-xl font-semibold">Welcome back, HR</h1>
+              <p className="text-gray-500 text-sm">
+                Monitor postings, candidates, and pipeline at a glance.
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-3">
             <Button
-              className="bg-[#2563EB] hover:bg-[#1E40AF] text-white"
+              className="bg-gray-300 hover:bg-gray-500 text-white"
               onClick={() => setOpenAddJob(true)}>
               + New Job
             </Button>

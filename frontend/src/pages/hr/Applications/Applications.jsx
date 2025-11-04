@@ -10,6 +10,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import API from "../../../utils/api.js";
+import ScheduleInterviewDialog from "./ScheduleInterviewDialog";
+import { Calendar1 } from "lucide-react";
 
 export default function ApplicationsList({ refreshTrigger }) {
   const [applications, setApplications] = useState([]);
@@ -18,8 +20,10 @@ export default function ApplicationsList({ refreshTrigger }) {
   const [statusNotes, setStatusNotes] = useState({});
   const [statusUpdates, setStatusUpdates] = useState({});
   const [selectedApp, setSelectedApp] = useState(null);
+  const [showDialog, setShowDialog] = useState(false);
 
   const fetchApplications = async () => {
+    setLoading(true);
     try {
       const res = await API.get("/applications/getApplications");
       const data = res.data;
@@ -105,7 +109,7 @@ export default function ApplicationsList({ refreshTrigger }) {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Applications</h2>
 
-      <Card className="p-0 overflow-hidden  max-h-[70vh]">
+      <Card className="p-0 overflow-hidden max-h-[70vh]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead className="bg-gray-50 text-gray-700">
@@ -160,7 +164,7 @@ export default function ApplicationsList({ refreshTrigger }) {
                     />
                   </td>
 
-                  <td className="px-4 py-3 space-x-2 ">
+                  <td className="px-4 py-3 space-x-2">
                     <Button
                       size="sm"
                       className="bg-[#F9AC25] hover:bg-[#F9AC25]"
@@ -168,11 +172,21 @@ export default function ApplicationsList({ refreshTrigger }) {
                       disabled={updatingId === app._id}>
                       {updatingId === app._id ? "Updating..." : "Update"}
                     </Button>
+
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => setSelectedApp(app)}>
                       View Details
+                    </Button>
+
+                    <Button
+                      onClick={() => {
+                        setSelectedApp(app); // pass full object
+                        setShowDialog(true);
+                      }}
+                      className="bg-blue-500 text-white">
+                      <Calendar1 />
                     </Button>
                   </td>
                 </tr>
@@ -182,50 +196,13 @@ export default function ApplicationsList({ refreshTrigger }) {
         </div>
       </Card>
 
-      {/* Details Dialog */}
-      <Dialog open={!!selectedApp} onOpenChange={() => setSelectedApp(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Candidate Details</DialogTitle>
-            <DialogDescription>
-              Review candidate info and resume
-            </DialogDescription>
-          </DialogHeader>
-          {selectedApp && (
-            <div className="space-y-3 mt-4 text-sm">
-              <p>
-                <strong>Name:</strong> {selectedApp.candidateId?.name}
-              </p>
-              <p>
-                <strong>Email:</strong> {selectedApp.candidateId?.email}
-              </p>
-              <p>
-                <strong>Phone:</strong> {selectedApp.candidateId?.phone || "-"}
-              </p>
-              <p>
-                <strong>Job:</strong> {selectedApp.jobId?.title}
-              </p>
-              <p>
-                <strong>Status:</strong> {selectedApp.latestStatus}
-              </p>
-              <p>
-                <strong>Comment:</strong> {selectedApp.latestStatusNote || "-"}
-              </p>
-              {selectedApp.candidateId?.resume ? (
-                <Button
-                  onClick={() =>
-                    window.open(selectedApp.candidateId.resume, "_blank")
-                  }
-                  className="w-full">
-                  View Resume
-                </Button>
-              ) : (
-                <p className="text-gray-500 italic">No resume uploaded</p>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Schedule Interview Dialog */}
+      <ScheduleInterviewDialog
+        open={showDialog}
+        onClose={() => setShowDialog(false)}
+        application={selectedApp}
+        onSuccess={() => fetchApplications()}
+      />
     </div>
   );
 }

@@ -27,12 +27,11 @@ export default function CandidateList() {
   const [emailContent, setEmailContent] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [showActiveOnly, setShowActiveOnly] = useState(true); // ✅ Active filter
+  const [showActiveOnly, setShowActiveOnly] = useState(true);
 
   const fetchCandidates = async () => {
     try {
       const res = await API.get("/candidates/getCandidatesWithApplications");
-      // Ensure default active = true if not set
       const data = res.data.map((c) => ({ ...c, active: c.active ?? true }));
       setCandidates(data);
     } catch (err) {
@@ -99,23 +98,41 @@ export default function CandidateList() {
     }
   };
 
-  const sendEmail = () => {
-    if (composeEmailBulk && selectedCandidates.length === 0) {
-      alert("Select at least one candidate for bulk email");
-      return;
+  // ✅ Send email (single or bulk, personalized or default)
+  const sendEmail = async () => {
+    try {
+      const recipients = composeEmailBulk
+        ? candidates.filter((c) => selectedCandidates.includes(c._id))
+        : [composeEmailCandidate];
+
+      if (recipients.length === 0) {
+        alert("No recipients selected");
+        return;
+      }
+
+      await Promise.all(
+        recipients.map((c) =>
+          API.post("/candidates/sendStatusEmail", {
+            email: c.email,
+            name: c.name,
+            status:
+              emailType === "personalized"
+                ? `Hi ${c.name},\n\n${emailContent}`
+                : emailContent,
+          })
+        )
+      );
+
+      alert("Email(s) sent successfully!");
+
+      setComposeEmailCandidate(null);
+      setComposeEmailBulk(false);
+      setSelectedCandidates([]);
+      setEmailContent("");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send email");
     }
-
-    const recipients = composeEmailBulk
-      ? candidates.filter((c) => selectedCandidates.includes(c._id))
-      : [composeEmailCandidate];
-
-    recipients.forEach((c) => {
-      alert(`Sending ${emailType} email to ${c.name} (${c.email})`);
-    });
-
-    setComposeEmailCandidate(null);
-    setComposeEmailBulk(false);
-    setSelectedCandidates([]);
   };
 
   const handleSelectAll = (checked) => {
@@ -131,7 +148,6 @@ export default function CandidateList() {
 
   if (loading) return <p>Loading candidates...</p>;
 
-  // ✅ Apply filters
   const filteredCandidates = candidates.filter((c) => {
     const matchesSearch =
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -149,7 +165,7 @@ export default function CandidateList() {
 
   return (
     <Card className="p-5 rounded-2xl shadow-sm bg-white">
-      {/* ✅ Filters & Bulk Email */}
+      {/* Filters & Bulk Email */}
       <div className="flex justify-between mb-5 flex-wrap gap-3">
         <div className="flex flex-wrap gap-5 items-end">
           <div className="flex flex-col">
@@ -164,7 +180,6 @@ export default function CandidateList() {
             />
           </div>
 
-          {/* ✅ Active Only Filter */}
           <div className="flex items-center gap-2 mb-1">
             <Switch
               checked={showActiveOnly}
@@ -185,7 +200,7 @@ export default function CandidateList() {
         </Button>
       </div>
 
-      {/* ✅ Candidates Table */}
+      {/* Candidates Table */}
       <div className="overflow-x-auto max-h-[70vh]">
         <table className="w-full border-collapse text-sm">
           <thead className="bg-gray-50 text-gray-700 sticky top-0 z-10">
@@ -204,7 +219,6 @@ export default function CandidateList() {
               <th className="px-4 py-2 text-left">Actions</th>
             </tr>
           </thead>
-
           <tbody>
             {filteredCandidates.map((c) => (
               <tr
@@ -364,7 +378,7 @@ export default function CandidateList() {
                 Compose Email{" "}
                 {composeEmailBulk
                   ? "(Bulk)"
-                  : `to ${composeEmailCandidate.name}`}
+                  : `to ${composeEmailCandidate?.name}`}
               </DialogTitle>
             </DialogHeader>
             <div className="flex flex-col gap-3 mt-2">
@@ -393,6 +407,21 @@ export default function CandidateList() {
                     : "Personalized bulk email content..."
                 }
               />
+
+              {/* Preview for personalized bulk */}
+              {emailType === "personalized" && composeEmailBulk && (
+                <div className="mt-2 max-h-40 overflow-y-auto border p-2 rounded bg-gray-50">
+                  <h4 className="font-medium mb-1">Preview:</h4>
+                  {selectedCandidates.map((id) => {
+                    const c = candidates.find((cand) => cand._id === id);
+                    return (
+                      <div key={id} className="mb-1 text-sm">
+                        <strong>{c.name}:</strong> Hi {c.name}, {emailContent}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button
