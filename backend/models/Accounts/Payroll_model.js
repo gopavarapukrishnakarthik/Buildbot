@@ -7,11 +7,7 @@ const payrollSchema = new mongoose.Schema(
     // Employees receiving this payroll
     employees: [
       {
-        employeeId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Employee",
-          required: true,
-        },
+        employeeId: String,
         name: String,
         role: String,
         joinDate: Date,

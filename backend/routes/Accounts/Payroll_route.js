@@ -179,7 +179,7 @@ function generatePDFFile(payroll, filePath) {
       doc.text("Gender:", leftX, y + 78);
 
       doc.font("Helvetica");
-      doc.text(safe(emp.employeeId || emp._id || "-"), leftX + 110, y + 6);
+      doc.text(safe(emp.employeeId || "-"), leftX + 110, y + 6);
       doc.text(safe(emp.name || "-"), leftX + 110, y + 24);
       doc.text(safe(payroll.department || "-"), leftX + 110, y + 42);
       doc.text(
@@ -355,14 +355,14 @@ router.post("/create", async (req, res) => {
     if (employeeIds && Array.isArray(employeeIds) && employeeIds.length) {
       const employees = await Employee.find({
         _id: { $in: employeeIds },
-      }).select("firstName lastName role joinDate email gender");
+      }).select("employeeId firstName lastName role joinDate email gender");
       formatted = employees.map((e) => ({
-        employeeId: e._id,
-        name: `${e.firstName} ${e.lastName}`,
-        role: e.role,
-        joinDate: e.joinDate,
-        email: e.email,
-        gender: e.gender,
+        employeeId: e.employeeId || "-", // ✅ HR Employee ID
+        name: `${e.firstName} ${e.lastName}`, // ✅ Full Name
+        role: e.role || "-",
+        joinDate: e.joinDate || null,
+        email: e.email || "-",
+        gender: e.gender || "-",
       }));
     }
 

@@ -24,6 +24,7 @@ const AddEmployeeDialog = ({ onSuccess, onClose }) => {
     firstName: "",
     lastName: "",
     email: "",
+    employeeId: "",
     phone: "",
     dob: "",
     location: "",
@@ -149,6 +150,15 @@ const AddEmployeeDialog = ({ onSuccess, onClose }) => {
                     type="email"
                     name="email"
                     value={form.email}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div>
+                  <Label>Employee ID *</Label>
+                  <Input
+                    type="employeeId"
+                    name="employeeId"
+                    value={form.employeeId}
                     onChange={handleChange}
                   />
                 </div>
@@ -380,6 +390,10 @@ const AddEmployeeDialog = ({ onSuccess, onClose }) => {
                 <p>
                   {" "}
                   <b>Email:</b> {form.email}{" "}
+                </p>{" "}
+                <p>
+                  {" "}
+                  <b>Employee ID:</b> {form.employeeId}{" "}
                 </p>{" "}
                 <p>
                   {" "}
