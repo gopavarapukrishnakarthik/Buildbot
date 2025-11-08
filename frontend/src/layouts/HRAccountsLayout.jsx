@@ -44,7 +44,7 @@ const sidebarItems = [
   { name: "Circulars", path: "/accounts-dashboard/circular", icon: Megaphone },
   {
     name: "Attendance",
-    path: "/accounts-dashboard/logistics",
+    path: "/accounts-dashboard/Attendance",
     icon: CalendarDays,
   },
   {

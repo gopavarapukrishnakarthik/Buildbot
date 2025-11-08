@@ -25,6 +25,7 @@ import CandidateDetails from "@/pages/hr/Candidates/CandidateDetails";
 import EmployeeList from "@/pages/hr/Accounts/Employees/EmployeeList";
 import PayrollScreen from "@/pages/hr/Accounts/Payroll/PayrollScreen";
 import CircularsScreen from "@/pages/hr/Accounts/Circulars/Circulars";
+import LeaveOverview from "@/pages/hr/Accounts/Leaves/LeaveOverview";
 
 // Protected Route component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -84,6 +85,7 @@ const AppRoutes = () => {
           <Route path="employees-list" element={<EmployeeList />} />
           <Route path="payroll" element={<PayrollScreen />} />
           <Route path="circular" element={<CircularsScreen />} />
+          <Route path="Attendance" element={<LeaveOverview />} />
 
           {/* <Route path="job-list/:id" element={<JobDetails />} />
           <Route path="candidates" element={<Candidates />} />

@@ -9,23 +9,21 @@ import API from "../../../../utils/api";
 export default function PayrollForm() {
   const [employees, setEmployees] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
+
   const [form, setForm] = useState({
     month: "",
+    year: "",
     earnings: {},
     deductions: {},
     totalDays: 30,
-    paidDays: 30,
     arrearDays: 0,
-    lopDays: 0,
     panNo: "",
     uanNo: "",
     pfNo: "",
   });
 
   useEffect(() => {
-    API.get("/employee/getEmployees").then((res) => {
-      setEmployees(res.data);
-    });
+    API.get("/employee/getEmployees").then((res) => setEmployees(res.data));
   }, []);
 
   const toggleEmployee = (id) => {
@@ -48,26 +46,60 @@ export default function PayrollForm() {
   const totalDeductions = calcTotal(form.deductions);
   const netSalary = totalEarnings - totalDeductions;
 
+  // ✅ CLEAN FINAL SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await API.post("/payroll/create", {
+
+    if (!form.month || !form.year) return alert("Month and Year are required");
+
+    if (selectedIds.length === 0) return alert("Select at least one employee");
+
+    const payload = {
       employeeIds: selectedIds,
-      payrollData: { ...form, totalEarnings, totalDeductions, netSalary },
-    });
-    alert("Payroll generated successfully");
+      month: form.month,
+      year: Number(form.year),
+      payrollData: {
+        totalDays: form.totalDays,
+        arrearDays: form.arrearDays,
+        panNo: form.panNo,
+        uanNo: form.uanNo,
+        pfNo: form.pfNo,
+        earnings: form.earnings,
+        deductions: form.deductions,
+      },
+    };
+
+    try {
+      await API.post("/payroll/create", payload);
+      alert("✅ Payroll generated successfully!");
+    } catch (err) {
+      console.error("❌ Error creating payroll:", err);
+      alert("Payroll failed — check console");
+    }
   };
 
   return (
     <Card className="p-6 m-6 shadow-md">
       <h2 className="text-xl font-semibold mb-4">📄 Generate Payroll</h2>
 
-      <Label>Select Month</Label>
+      {/* MONTH */}
+      <Label>Month</Label>
       <Input
-        type="text"
-        placeholder="e.g., November 2025"
+        placeholder="e.g., November"
+        value={form.month}
         onChange={(e) => setForm({ ...form, month: e.target.value })}
       />
 
+      {/* YEAR */}
+      <Label className="mt-3">Year</Label>
+      <Input
+        type="number"
+        placeholder="2025"
+        value={form.year}
+        onChange={(e) => setForm({ ...form, year: e.target.value })}
+      />
+
+      {/* EMPLOYEE SELECT */}
       <div className="mt-4">
         <h3 className="font-semibold">Select Employees</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
@@ -87,6 +119,7 @@ export default function PayrollForm() {
 
       <CardContent className="mt-6">
         <h3 className="font-semibold text-lg">Earnings</h3>
+
         {[
           "basicSalary",
           "houseRentAllowance",
@@ -106,6 +139,7 @@ export default function PayrollForm() {
         ))}
 
         <h3 className="font-semibold text-lg mt-6">Deductions</h3>
+
         {[
           "professionalTax",
           "providentFund",
@@ -124,7 +158,7 @@ export default function PayrollForm() {
           </div>
         ))}
 
-        {/* Totals */}
+        {/* TOTALS */}
         <div className="mt-6 border-t pt-4 text-sm">
           <div className="flex justify-between">
             <span>Total Earnings:</span>
@@ -139,7 +173,7 @@ export default function PayrollForm() {
             </span>
           </div>
           <div className="flex justify-between text-lg mt-2 border-t pt-2">
-            <span>Net Salary (in ₹):</span>
+            <span>Net Salary:</span>
             <span className="font-bold text-blue-800">
               ₹ {netSalary.toLocaleString("en-IN")}
             </span>
@@ -147,7 +181,7 @@ export default function PayrollForm() {
         </div>
 
         <Button className="mt-6 bg-[#F9AC25] text-white" onClick={handleSubmit}>
-          Generate Payroll
+          ✅ Generate Payroll
         </Button>
       </CardContent>
     </Card>

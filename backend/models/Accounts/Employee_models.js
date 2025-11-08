@@ -12,6 +12,11 @@ const employeeSchema = new mongoose.Schema(
     avatar: { type: String, trim: true },
     joinDate: { type: Date, required: true },
 
+    // Employee details
+    panNo: { type: String, trim: true },
+    UANNo: { type: String, trim: true },
+    PFNo: { type: String, trim: true },
+
     // 💼 Job Details
     department: { type: String, required: true, trim: true },
     role: { type: String, required: true, trim: true },

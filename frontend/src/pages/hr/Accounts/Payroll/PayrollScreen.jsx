@@ -127,7 +127,11 @@ export default function PayrollScreen() {
   // 💾 Save Changes
   const saveChanges = async () => {
     try {
-      await API.put(`/payroll/${editData._id}`, { payrollData: editData });
+      await API.put(`/payroll/${editData._id}`, {
+        payrollData: editData,
+        month: editData.month,
+        year: editData.year,
+      });
       alert("✅ Payroll updated successfully!");
       setPreviewOpen(false);
       fetchAll();
@@ -236,6 +240,7 @@ export default function PayrollScreen() {
               <div className="grid grid-cols-3 gap-4">
                 {[
                   "month",
+                  "year",
                   "totalDays",
                   "paidDays",
                   "panNo",

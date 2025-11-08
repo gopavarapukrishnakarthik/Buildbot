@@ -10,6 +10,7 @@ const applicationRoutes = require("./routes/Application_routes");
 const employeeRoutes = require("./routes/Accounts/Employee_route");
 const payrollRoutes = require("./routes/Accounts/Payroll_route");
 const circularRoutes = require("./routes/Accounts/Circular_route");
+const leaveRoutes = require("./routes/Accounts/Leave_route");
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use("/api/applications", applicationRoutes);
 app.use("/api/employee", employeeRoutes);
 app.use("/api/payroll", payrollRoutes);
 app.use("/api/circulars", circularRoutes);
+app.use("/api/leaves", leaveRoutes);
 
 mongoose
   .connect(process.env.MONGO_URI)

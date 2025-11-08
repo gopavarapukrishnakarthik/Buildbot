@@ -3,6 +3,8 @@ const express = require("express");
 const router = express.Router();
 const Payroll = require("../../models/Accounts/Payroll_model");
 const Employee = require("../../models/Accounts/Employee_models");
+const Leave = require("../../models/Accounts/Leave_model.js");
+
 const PDFDocument = require("pdfkit");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
@@ -10,29 +12,101 @@ const path = require("path");
 
 // ---------- Helpers ----------
 
+// Days in month from "November", 2025
+function getDaysInMonth(month, year) {
+  const d = new Date(`${month} 1, ${year}`);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+}
+
+// ✅ Safe inclusive date-count (NO negative)
+function countDays(startDate, endDate) {
+  const s = new Date(startDate);
+  const e = new Date(endDate);
+  if (e < s) return 0;
+
+  const startUTC = Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
+  const endUTC = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
+
+  return Math.max(0, (endUTC - startUTC) / (1000 * 60 * 60 * 24) + 1);
+}
+
+// ✅ Correct leave impact (LOP + HALF_DAY)
+async function calculateLeaveImpact(hrEmployeeId, month, year) {
+  const leaves = await Leave.find({ employeeId: hrEmployeeId, month, year });
+
+  let lopDays = 0;
+
+  for (const l of leaves) {
+    const span = countDays(l.startDate, l.endDate);
+    if (l.leaveType === "LOP") lopDays += span;
+    if (l.leaveType === "HALF_DAY") lopDays += 0.5;
+  }
+
+  return lopDays;
+}
 // Filter out existing total keys so we do NOT double count
 function calcTotals(earnings = {}, deductions = {}) {
-  const cleanEarningsEntries = Object.entries(earnings).filter(
+  const cleanEarnings = Object.entries(earnings).filter(
     ([k]) => k !== "totalEarnings"
   );
-  const cleanDeductionsEntries = Object.entries(deductions).filter(
+  const cleanDeductions = Object.entries(deductions).filter(
     ([k]) => k !== "totalDeductions"
   );
 
-  const totalEarnings = cleanEarningsEntries.reduce(
+  const totalEarnings = cleanEarnings.reduce(
     (a, [, b]) => a + Number(b || 0),
     0
   );
-  const totalDeductions = cleanDeductionsEntries.reduce(
+  const totalDeductions = cleanDeductions.reduce(
     (a, [, b]) => a + Number(b || 0),
     0
   );
-  const netSalary = totalEarnings - totalDeductions;
-  return { totalEarnings, totalDeductions, netSalary };
+
+  return {
+    totalEarnings,
+    totalDeductions,
+    netSalary: totalEarnings - totalDeductions,
+  };
 }
 
 function drawLine(doc, y) {
   doc.moveTo(50, y).lineTo(550, y).stroke();
+}
+
+// ✅ Count days safely (no negative values)
+function countDays(startDate, endDate) {
+  const s = new Date(startDate);
+  const e = new Date(endDate);
+
+  // ✅ Flip if start > end
+  if (e < s) return 0;
+
+  // ✅ Convert to UTC to avoid timezone shifting issues
+  const startUTC = Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
+  const endUTC = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
+
+  const diff = (endUTC - startUTC) / (1000 * 60 * 60 * 24) + 1;
+
+  return Math.max(0, diff); // ✅ No negative values
+}
+
+// ✅ NEW calculateLeaveImpact (replace old function)
+async function calculateLeaveImpact(hrEmployeeId, month, year) {
+  const leaves = await Leave.find({ employeeId: hrEmployeeId, month, year });
+
+  let lopDays = 0;
+
+  for (const l of leaves) {
+    const spanDays = countDays(l.startDate, l.endDate);
+
+    if (l.leaveType === "LOP") lopDays += spanDays;
+
+    if (l.leaveType === "HALF_DAY") lopDays += 0.5;
+
+    // ✅ No LOP for PAID_LEAVE / CASUAL_LEAVE / SICK_LEAVE
+  }
+
+  return lopDays;
 }
 
 // Convert number to words (handles up to lakh/thousands reasonably)
@@ -346,100 +420,136 @@ function generatePDFFile(payroll, filePath) {
 // ---------- Routes (create/update/list) ----------
 
 // Create payroll - calculates totals once and stores them
+// ✅ Create payroll — fully manual (NO auto leave calculation)
+// ✅ CREATE PAYROLL — auto calculate paidDays from leave
 router.post("/create", async (req, res) => {
   try {
-    const { employeeIds, payrollData } = req.body;
+    const { employeeIds, month, year, payrollData } = req.body;
 
-    // If employeeIds provided, populate first employee details
-    let formatted = [];
-    if (employeeIds && Array.isArray(employeeIds) && employeeIds.length) {
-      const employees = await Employee.find({
-        _id: { $in: employeeIds },
-      }).select("employeeId firstName lastName role joinDate email gender");
-      formatted = employees.map((e) => ({
-        employeeId: e.employeeId || "-", // ✅ HR Employee ID
-        name: `${e.firstName} ${e.lastName}`, // ✅ Full Name
-        role: e.role || "-",
-        joinDate: e.joinDate || null,
-        email: e.email || "-",
-        gender: e.gender || "-",
-      }));
-    }
+    if (!employeeIds?.length)
+      return res.status(400).json({ message: "No employees selected" });
+    if (!month || !year)
+      return res.status(400).json({ message: "Month and year are required" });
 
-    // Calculate totals (ignores preexisting total fields in object)
+    // ✅ Fetch employees
+    const employees = await Employee.find({ _id: { $in: employeeIds } }).select(
+      "employeeId firstName lastName role joinDate email gender"
+    );
+
+    const employeesBlock = employees.map((e) => ({
+      employeeId: e.employeeId || "-",
+      name: `${e.firstName} ${e.lastName}`,
+      role: e.role || "-",
+      joinDate: e.joinDate,
+      email: e.email || "-",
+      gender: e.gender || "-",
+    }));
+
+    // ✅ Auto days in month
+    const totalDays = getDaysInMonth(month, year);
+
+    // ✅ Leave → LOP calculation
+    const hrEmployeeId = employees[0]?.employeeId;
+    const lopDays = hrEmployeeId
+      ? await calculateLeaveImpact(hrEmployeeId, month, year)
+      : 0;
+
+    // ✅ Paid days
+    const paidDays = totalDays - lopDays;
+
+    // ✅ Salary totals (no proration)
     const { totalEarnings, totalDeductions, netSalary } = calcTotals(
-      payrollData.earnings || {},
-      payrollData.deductions || {}
+      payrollData.earnings,
+      payrollData.deductions
     );
 
     const payload = {
-      ...payrollData,
-      employees: formatted.length ? formatted : payrollData.employees || [],
-      // store totals explicitly once
-      earnings: { ...(payrollData.earnings || {}), totalEarnings },
-      deductions: { ...(payrollData.deductions || {}), totalDeductions },
+      month,
+      year,
+      employees: employeesBlock,
+      totalDays,
+      paidDays,
+      lopDays,
+      arrearDays: payrollData.arrearDays || 0,
+      panNo: payrollData.panNo || "",
+      uanNo: payrollData.uanNo || "",
+      pfNo: payrollData.pfNo || "",
+      earnings: { ...payrollData.earnings, totalEarnings },
+      deductions: { ...payrollData.deductions, totalDeductions },
       netSalary,
     };
 
     const created = await Payroll.create(payload);
     res.status(201).json({ success: true, payroll: created });
-  } catch (e) {
-    console.error("Create payroll error:", e);
-    res.status(500).json({ success: false, message: "Create failed" });
+  } catch (error) {
+    console.error("❌ Payroll Create Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
 // Update payroll - recalc totals once and update document
+// ✅ Update payroll — fully manual days logic
 router.put("/:id", async (req, res) => {
   try {
-    const { payrollData } = req.body;
-    // recalc totals (ignore preexisting total keys)
-    const { totalEarnings, totalDeductions, netSalary } = calcTotals(
-      payrollData.earnings || {},
-      payrollData.deductions || {}
-    );
+    const { payrollData, month, year } = req.body;
 
-    const payload = {
-      ...payrollData,
-      earnings: { ...(payrollData.earnings || {}), totalEarnings },
-      deductions: { ...(payrollData.deductions || {}), totalDeductions },
-      netSalary,
+    const payroll = await Payroll.findById(req.params.id);
+    if (!payroll) return res.status(404).json({ message: "Payroll not found" });
+
+    const safe = (v, fallback) => {
+      const n = Number(v);
+      return isNaN(n) ? fallback : n;
     };
 
-    const updated = await Payroll.findByIdAndUpdate(req.params.id, payload, {
-      new: true,
-    });
+    const totalDays = safe(payrollData.totalDays, payroll.totalDays);
+    const paidDays = safe(payrollData.paidDays, payroll.paidDays);
+    let lopDays = safe(payrollData.lopDays, payroll.lopDays);
+    if (lopDays < 0) lopDays = 0;
+
+    const { totalEarnings, totalDeductions, netSalary } = calcTotals(
+      payrollData.earnings,
+      payrollData.deductions
+    );
+
+    payroll.month = month;
+    payroll.year = year;
+    payroll.totalDays = totalDays;
+    payroll.paidDays = paidDays;
+    payroll.lopDays = lopDays;
+    payroll.earnings = { ...payrollData.earnings, totalEarnings };
+    payroll.deductions = { ...payrollData.deductions, totalDeductions };
+    payroll.netSalary = netSalary;
+
+    const updated = await payroll.save();
     res.json({ success: true, payroll: updated });
-  } catch (e) {
-    console.error("Update payroll error:", e);
+  } catch (error) {
+    console.error("❌ Payroll Update Error:", error);
     res.status(500).json({ success: false, message: "Update failed" });
   }
 });
 
-// Get all payrolls
 // Get all payrolls (with recalculated totals)
 router.get("/", async (req, res) => {
   try {
     const data = await Payroll.find().sort({ createdAt: -1 });
 
-    // Map through each payroll and recalc totals
-    const result = data.map((item) => {
-      const { totalEarnings, totalDeductions, netSalary } = calcTotals(
-        item.earnings || {},
-        item.deductions || {}
-      );
+    res.json(
+      data.map((item) => {
+        const { totalEarnings, totalDeductions, netSalary } = calcTotals(
+          item.earnings,
+          item.deductions
+        );
 
-      return {
-        ...item.toObject(),
-        earnings: { ...(item.earnings || {}), totalEarnings },
-        deductions: { ...(item.deductions || {}), totalDeductions },
-        netSalary,
-      };
-    });
-
-    res.json(result);
-  } catch (e) {
-    console.error("Fetch all payrolls error:", e);
+        return {
+          ...item.toObject(),
+          earnings: { ...item.earnings, totalEarnings },
+          deductions: { ...item.deductions, totalDeductions },
+          netSalary,
+        };
+      })
+    );
+  } catch (error) {
+    console.error("Fetch error:", error);
     res.status(500).json({ error: "Fetch failed" });
   }
 });
@@ -451,20 +561,18 @@ router.get("/:id", async (req, res) => {
     if (!data) return res.status(404).json({ message: "Not found" });
 
     const { totalEarnings, totalDeductions, netSalary } = calcTotals(
-      data.earnings || {},
-      data.deductions || {}
+      data.earnings,
+      data.deductions
     );
 
-    const response = {
+    res.json({
       ...data.toObject(),
-      earnings: { ...(data.earnings || {}), totalEarnings },
-      deductions: { ...(data.deductions || {}), totalDeductions },
+      earnings: { ...data.earnings, totalEarnings },
+      deductions: { ...data.deductions, totalDeductions },
       netSalary,
-    };
-
-    res.json(response);
-  } catch (e) {
-    console.error("Fetch single payroll error:", e);
+    });
+  } catch (error) {
+    console.error("Fetch single payroll error:", error);
     res.status(500).json({ error: "Fetch failed" });
   }
 });
@@ -476,22 +584,15 @@ router.get("/preview/:id", async (req, res) => {
     if (!payroll) return res.status(404).json({ message: "Payroll not found" });
 
     const tempDir = path.join(__dirname, "../../../temp");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-    const filePath = path.join(tempDir, `payslip_preview_${payroll._id}.pdf`);
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
-    // generate and wait
+    const filePath = path.join(tempDir, `payslip_preview_${payroll._id}.pdf`);
     await generatePDFFile(payroll, filePath);
 
     res.setHeader("Content-Type", "application/pdf");
-    // stream file
-    const readStream = fs.createReadStream(filePath);
-    readStream.pipe(res);
-    // optional: cleanup after streaming (commented out to keep previews if needed)
-    readStream.on("end", () => {
-      // fs.unlinkSync(filePath);
-    });
-  } catch (e) {
-    console.error("Preview error:", e);
+    fs.createReadStream(filePath).pipe(res);
+  } catch (error) {
+    console.error("Preview error:", error);
     res.status(500).json({ message: "Failed to generate payslip" });
   }
 });
@@ -503,9 +604,9 @@ router.post("/send-email/:id", async (req, res) => {
     if (!payroll) return res.status(404).json({ message: "Payroll not found" });
 
     const tempDir = path.join(__dirname, "../../temp");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-    const filePath = path.join(tempDir, `payslip_mail_${payroll._id}.pdf`);
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
+    const filePath = path.join(tempDir, `payslip_mail_${payroll._id}.pdf`);
     await generatePDFFile(payroll, filePath);
 
     const transport = nodemailer.createTransport({
@@ -513,25 +614,22 @@ router.post("/send-email/:id", async (req, res) => {
       auth: { user: process.env.USER_EMAIL, pass: process.env.USER_PASSWORD },
     });
 
-    const emp = (payroll.employees && payroll.employees[0]) || {};
+    const emp = payroll.employees?.[0] || {};
+
     await transport.sendMail({
       from: process.env.USER_EMAIL,
-      to: emp.email || req.body.to || process.env.USER_EMAIL,
+      to: emp.email || process.env.USER_EMAIL,
       subject: `Payslip for ${payroll.month}`,
-      text: `Dear ${emp.name || "Employee"},\n\nPlease find attached your payslip for ${payroll.month}.\n\nRegards,\nHR Department`,
+      text: `Dear ${emp.name},\n\nPlease find attached your payslip for ${payroll.month}.\n\nRegards,\nHR Department`,
       attachments: [
         { filename: `Payslip_${payroll.month}.pdf`, path: filePath },
       ],
     });
 
-    // cleanup file after sending
-    fs.unlink(filePath, (err) => {
-      if (err) console.warn("Failed to delete temp file:", err.message);
-    });
-
+    fs.unlink(filePath, () => {});
     res.json({ success: true, message: "Email sent successfully" });
-  } catch (e) {
-    console.error("Send-email error:", e);
+  } catch (error) {
+    console.error("Send-email error:", error);
     res.status(500).json({ message: "Failed to send email" });
   }
 });
@@ -544,8 +642,8 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ message: "Payroll record not found" });
 
     res.json({ message: "Payroll deleted successfully" });
-  } catch (e) {
-    console.error("Delete payroll error:", e);
+  } catch (error) {
+    console.error("Delete error:", error);
     res.status(500).json({ error: "Failed to delete payroll" });
   }
 });
