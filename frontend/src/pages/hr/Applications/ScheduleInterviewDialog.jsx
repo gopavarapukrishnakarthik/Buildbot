@@ -17,13 +17,29 @@ const ScheduleInterviewDialog = ({ open, onClose, application, onSuccess }) => {
     meetLink: "",
     notes: "",
   });
+
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Prefill candidate/interview info
+  // ✅ Load employee list
+  const loadEmployees = async () => {
+    try {
+      const res = await API.get("/employee/getEmployees");
+      setEmployees(res.data || []);
+    } catch (err) {
+      console.error("Failed to load employees", err);
+    }
+  };
+
+  useEffect(() => {
+    if (open) loadEmployees();
+  }, [open]);
+
+  // ✅ Prefill form when editing existing interview
   useEffect(() => {
     if (application) {
       setForm({
-        interviewer: application.interview?.interviewer || "",
+        interviewer: application.interview?.interviewer?._id || "",
         interviewDate: application.interview?.interviewDate
           ? new Date(application.interview.interviewDate)
               .toISOString()
@@ -37,19 +53,16 @@ const ScheduleInterviewDialog = ({ open, onClose, application, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!application?._id) {
-      alert("Application not loaded properly");
-      return;
-    }
-
     setLoading(true);
+
     try {
-      const res = await API.post(
+      await API.post(
         `/applications/${application._id}/scheduleInterview`,
         form
       );
-      alert("Interview scheduled and email sent!");
-      onSuccess?.(res.data.application);
+
+      alert("Interview scheduled!");
+      onSuccess();
       onClose();
     } catch (err) {
       console.error(err);
@@ -72,36 +85,39 @@ const ScheduleInterviewDialog = ({ open, onClose, application, onSuccess }) => {
               <strong>Candidate:</strong> {application.candidateId?.name}
             </p>
             <p>
-              <strong>Email:</strong> {application.candidateId?.email}
-            </p>
-            <p>
-              <strong>Phone:</strong> {application.candidateId?.phone || "-"}
-            </p>
-            <p>
               <strong>Job:</strong> {application.jobId?.title}
+            </p>
+            <p>
+              <strong>Email:</strong> {application.candidateId?.email}
             </p>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ✅ Employee Select */}
           <div>
             <label className="text-sm font-medium">Interviewer</label>
-            <Input
-              name="interviewer"
-              placeholder="Enter interviewer name(s)"
+            <select
+              className="border rounded p-2 w-full"
               value={form.interviewer}
               onChange={(e) =>
                 setForm({ ...form, interviewer: e.target.value })
               }
-              required
-            />
+              required>
+              <option value="">Select interviewer</option>
+
+              {employees.map((emp) => (
+                <option key={emp._id} value={emp._id}>
+                  {emp.firstName} {emp.lastName} ({emp.department})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label className="text-sm font-medium">Interview Date & Time</label>
             <Input
               type="datetime-local"
-              name="interviewDate"
               value={form.interviewDate}
               onChange={(e) =>
                 setForm({ ...form, interviewDate: e.target.value })
@@ -110,32 +126,26 @@ const ScheduleInterviewDialog = ({ open, onClose, application, onSuccess }) => {
             />
           </div>
 
-          {/* <div>
+          <div>
             <label className="text-sm font-medium">Google Meet Link</label>
             <Input
-              name="meetLink"
               placeholder="https://meet.google.com/..."
               value={form.meetLink}
               onChange={(e) => setForm({ ...form, meetLink: e.target.value })}
               required
             />
-          </div> */}
+          </div>
 
           <div>
             <label className="text-sm font-medium">Notes (optional)</label>
             <Textarea
-              name="notes"
-              placeholder="Add any details or instructions for the candidate..."
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
 
-          <Button
-            type="submit"
-            disabled={loading || !application?._id}
-            className="w-full">
-            {loading ? "Scheduling..." : "Send Invite"}
+          <Button className="w-full" disabled={loading}>
+            {loading ? "Scheduling..." : "Schedule Interview"}
           </Button>
         </form>
       </DialogContent>

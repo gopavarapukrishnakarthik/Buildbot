@@ -2,13 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import API from "../../../utils/api.js";
 import ScheduleInterviewDialog from "./ScheduleInterviewDialog";
 import { Calendar1 } from "lucide-react";
@@ -28,27 +21,13 @@ export default function ApplicationsList({ refreshTrigger }) {
       const res = await API.get("/applications/getApplications");
       const data = res.data;
 
-      const appsWithDetails = data.map((app) => {
-        const latest =
-          app.statusHistory?.length > 0
-            ? app.statusHistory[app.statusHistory.length - 1]
-            : {
-                status: app.status || "Pending",
-                note: "",
-                changedAt: app.appliedAt,
-              };
+      const apps = data.map((app) => ({
+        ...app,
+        candidateName: app.candidateId?.name || "-",
+        jobTitle: app.jobId?.title || "-",
+      }));
 
-        return {
-          ...app,
-          candidateName: app.candidateId?.name || "-",
-          jobTitle: app.jobId?.title || "-",
-          latestStatus: latest.status,
-          latestStatusNote: latest.note,
-          latestStatusDate: latest.changedAt,
-        };
-      });
-
-      setApplications(appsWithDetails);
+      setApplications(apps);
     } catch (err) {
       console.error("Failed to fetch applications:", err);
     } finally {
@@ -114,28 +93,37 @@ export default function ApplicationsList({ refreshTrigger }) {
           <table className="w-full text-sm border-collapse">
             <thead className="bg-gray-50 text-gray-700">
               <tr>
-                <th className="text-left px-4 py-2 font-medium">Time</th>
-                <th className="text-left px-4 py-2 font-medium">Candidate</th>
-                <th className="text-left px-4 py-2 font-medium">Job</th>
-                <th className="text-left px-4 py-2 font-medium">Status</th>
-                <th className="text-left px-4 py-2 font-medium">Comment</th>
-                <th className="text-left px-4 py-2 font-medium">Actions</th>
+                <th className="px-4 py-2">Time</th>
+                <th className="px-4 py-2">Candidate</th>
+                <th className="px-4 py-2">Job</th>
+                <th className="px-4 py-2">Interviewer</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2">Comment</th>
+                <th className="px-4 py-2">Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {applications.map((app) => (
-                <tr
-                  key={app._id}
-                  className="border-b last:border-none hover:bg-gray-50">
+                <tr key={app._id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    {app.latestStatusDate
-                      ? new Date(app.latestStatusDate).toLocaleString()
+                    {app.interview?.interviewDate
+                      ? new Date(app.interview.interviewDate).toLocaleString()
+                      : app.latestDate
+                      ? new Date(app.latestDate).toLocaleString()
                       : "-"}
                   </td>
+
                   <td className="px-4 py-3">{app.candidateName}</td>
                   <td className="px-4 py-3">{app.jobTitle}</td>
 
-                  {/* Status dropdown */}
+                  <td className="px-4 py-3">
+                    {app.interview?.interviewer
+                      ? `${app.interview.interviewer.firstName} ${app.interview.interviewer.lastName}`
+                      : "-"}
+                  </td>
+
+                  {/* Status Dropdown */}
                   <td className="px-4 py-3">
                     <select
                       className={`border rounded p-1 text-sm ${
@@ -160,14 +148,13 @@ export default function ApplicationsList({ refreshTrigger }) {
                       onChange={(e) =>
                         handleNoteChange(app._id, e.target.value)
                       }
-                      className="w-full"
                     />
                   </td>
 
                   <td className="px-4 py-3 space-x-2">
                     <Button
                       size="sm"
-                      className="bg-[#F9AC25] hover:bg-[#F9AC25]"
+                      className="bg-amber-500 text-white"
                       onClick={() => updateStatus(app._id)}
                       disabled={updatingId === app._id}>
                       {updatingId === app._id ? "Updating..." : "Update"}
@@ -175,18 +162,12 @@ export default function ApplicationsList({ refreshTrigger }) {
 
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedApp(app)}>
-                      View Details
-                    </Button>
-
-                    <Button
+                      className="bg-blue-500 text-white"
                       onClick={() => {
-                        setSelectedApp(app); // pass full object
+                        setSelectedApp(app);
                         setShowDialog(true);
-                      }}
-                      className="bg-blue-500 text-white">
-                      <Calendar1 />
+                      }}>
+                      <Calendar1 size={16} />
                     </Button>
                   </td>
                 </tr>
@@ -196,7 +177,7 @@ export default function ApplicationsList({ refreshTrigger }) {
         </div>
       </Card>
 
-      {/* Schedule Interview Dialog */}
+      {/* ✅ Updated dialog */}
       <ScheduleInterviewDialog
         open={showDialog}
         onClose={() => setShowDialog(false)}

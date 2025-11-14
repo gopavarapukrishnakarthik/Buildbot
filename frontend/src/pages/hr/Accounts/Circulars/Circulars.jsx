@@ -81,17 +81,6 @@ export default function CircularScreen() {
     setAttachments(Array.from(e.target.files));
   };
 
-  // 🔹 Save Draft
-  const handleSaveDraft = async () => {
-    try {
-      await axios.post(API, { ...formData, attachments: [] });
-      alert("✅ Draft saved successfully!");
-    } catch (err) {
-      console.error(err);
-      alert("❌ Failed to save draft");
-    }
-  };
-
   useEffect(() => {
     const fetchCirculars = async () => {
       try {
@@ -234,13 +223,7 @@ export default function CircularScreen() {
                   ))}
                 </div>
 
-                <div className="flex justify-between mt-5">
-                  <Button
-                    onClick={handleSaveDraft}
-                    className="bg-gray-600 hover:bg-gray-500 text-white">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Draft
-                  </Button>
+                <div className="flex justify-end mt-5">
                   <Button
                     onClick={handleSend}
                     className="bg-amber-500 hover:bg-amber-400 text-white">

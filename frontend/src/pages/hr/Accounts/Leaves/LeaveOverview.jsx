@@ -4,6 +4,7 @@ import LeaveCalendar from "./LeaveCalendar";
 import LeaveList from "./LeaveList";
 import { TabsContent } from "@/components/ui/tabs";
 import API from "@/utils/api";
+import { Card } from "@/components/ui/card";
 
 const LeaveOverview = () => {
   const [employees, setEmployees] = useState([]);
@@ -31,7 +32,7 @@ const LeaveOverview = () => {
       <h2 className="text-xl font-semibold mb-3">Leave Management</h2>
 
       {/* ✅ Employee Dropdown */}
-      <div className="mb-4">
+      <Card className="p-5 mb-5">
         <label className="text-sm text-gray-600">Select Employee</label>
         <select
           className="border p-2 rounded w-full mt-1"
@@ -47,10 +48,10 @@ const LeaveOverview = () => {
             </option>
           ))}
         </select>
-      </div>
 
-      {/* ✅ Apply Leave Form */}
-      <ApplyLeave employee={selectedEmployee} />
+        {/* ✅ Apply Leave Form */}
+        <ApplyLeave employee={selectedEmployee} />
+      </Card>
 
       {/* ✅ Calendar & Leave List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

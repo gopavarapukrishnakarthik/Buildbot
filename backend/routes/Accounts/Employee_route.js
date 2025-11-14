@@ -13,6 +13,9 @@ router.post("/createEmployee", async (req, res) => {
       if (!managerExists) {
         return res.status(400).json({ message: "Manager not found" });
       }
+    } else {
+      // If manager is not provided, ensure it's not set at all
+      delete employeeData.manager;
     }
 
     const newEmployee = new Employee(employeeData);
@@ -63,15 +66,36 @@ router.get("/getEmployeeById/:id", async (req, res) => {
 // 🧾 Update employee details
 router.put("/updateEmployee/:id", async (req, res) => {
   try {
-    const updated = await Employee.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    const updateData = req.body;
+
+    // ✅ Handle manager optional validation
+    if (updateData.manager && updateData.manager !== "") {
+      const managerExists = await Employee.findById(updateData.manager);
+      if (!managerExists) {
+        return res.status(400).json({ message: "Manager not found" });
+      }
+    } else {
+      // Remove manager if empty or not provided
+      delete updateData.manager;
+    }
+
+    const updated = await Employee.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!updated) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    res.status(200).json({ message: "Employee updated", employee: updated });
+    res.status(200).json({
+      message: "Employee updated successfully",
+      employee: updated,
+    });
   } catch (error) {
     console.error("Error updating employee:", error);
     res.status(500).json({ message: "Server error", error: error.message });

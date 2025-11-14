@@ -7,10 +7,15 @@ const userRoutes = require("./routes/User_route");
 const jobRoutes = require("./routes/Job_route");
 const candidateRoutes = require("./routes/Candidate_route");
 const applicationRoutes = require("./routes/Application_routes");
+const recruitmentRoutes = require("./routes/recruitment_route");
 const employeeRoutes = require("./routes/Accounts/Employee_route");
 const payrollRoutes = require("./routes/Accounts/Payroll_route");
 const circularRoutes = require("./routes/Accounts/Circular_route");
 const leaveRoutes = require("./routes/Accounts/Leave_route");
+const maintenanceRoute = require("./routes/Accounts/Maintenance_route");
+const officeBudgetRoute = require("./routes/Accounts/OfficeBudget_route");
+const procurementRoute = require("./routes/Accounts/Procurement_route");
+const inventoryRoute = require("./routes/Accounts/Inventory_route");
 
 dotenv.config();
 
@@ -34,10 +39,15 @@ app.use("/api/user", userRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/candidates", candidateRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/recruitment", recruitmentRoutes);
 app.use("/api/employee", employeeRoutes);
 app.use("/api/payroll", payrollRoutes);
 app.use("/api/circulars", circularRoutes);
 app.use("/api/leaves", leaveRoutes);
+app.use("/api/maintenance", maintenanceRoute);
+app.use("/api/budget", officeBudgetRoute);
+app.use("/api/procurement", procurementRoute);
+app.use("/api/inventory", inventoryRoute);
 
 mongoose
   .connect(process.env.MONGO_URI)

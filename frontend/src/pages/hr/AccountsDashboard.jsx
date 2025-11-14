@@ -71,12 +71,9 @@ export default function AccountsDashboard() {
 
   const fetchLeavesOnDate = async (iso) => {
     const res = await API.get(`/leaves/on-date/${iso}`);
-    // your route returns either { success, data } or [] — normalize
-    const data = Array.isArray(res.data)
-      ? res.data
-      : Array.isArray(res.data?.data)
-      ? res.data.data
-      : [];
+
+    const data = Array.isArray(res.data?.data) ? res.data.data : [];
+
     setLeaves(data);
   };
 

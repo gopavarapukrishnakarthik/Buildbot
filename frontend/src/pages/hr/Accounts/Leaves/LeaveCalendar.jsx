@@ -23,11 +23,12 @@ const LeaveCalendar = ({ employeeId }) => {
   }, [employeeId, month, year]);
 
   return (
-    <div className="bg-white p-5 rounded-xl shadow">
+    <div className="bg-white mt-5 p-5 rounded-xl shadow flex flex-col items-center justify-center">
       <h3 className="text-lg font-semibold mb-3">Leave Calendar</h3>
 
       <Calendar
         mode="range"
+        className="justify-items-center"
         numberOfMonths={1}
         modifiers={{
           leave: leaveRanges,

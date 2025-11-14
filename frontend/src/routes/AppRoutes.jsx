@@ -26,6 +26,11 @@ import EmployeeList from "@/pages/hr/Accounts/Employees/EmployeeList";
 import PayrollScreen from "@/pages/hr/Accounts/Payroll/PayrollScreen";
 import CircularsScreen from "@/pages/hr/Accounts/Circulars/Circulars";
 import LeaveOverview from "@/pages/hr/Accounts/Leaves/LeaveOverview";
+import MaintenanceList from "@/pages/hr/Accounts/Maintenance/Maintenance_list";
+import BudgetScreen from "@/pages/hr/Accounts/Budget/BudgetScreen";
+import InventoryScreen from "@/pages/hr/Accounts/Inventory/InventoryScreen";
+import ProcurementScreen from "@/pages/hr/Accounts/Procurements/ProcurementScreen";
+import RecruitmentScreen from "@/pages/hr/Recruitment/RecruitmentScreen";
 
 // Protected Route component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -71,6 +76,7 @@ const AppRoutes = () => {
 
           <Route path="applications" element={<ApplicationsList />} />
           <Route path="candidates/:id" element={<CandidateDetails />} />
+          <Route path="recrutment" element={<RecruitmentScreen />} />
         </Route>
 
         {/* HR Accounts Dashboard */}
@@ -86,12 +92,10 @@ const AppRoutes = () => {
           <Route path="payroll" element={<PayrollScreen />} />
           <Route path="circular" element={<CircularsScreen />} />
           <Route path="Attendance" element={<LeaveOverview />} />
-
-          {/* <Route path="job-list/:id" element={<JobDetails />} />
-          <Route path="candidates" element={<Candidates />} />
-
-          <Route path="applications" element={<ApplicationsList />} />
-          <Route path="candidates/:id" element={<CandidateDetails />} /> */}
+          <Route path="maintenance" element={<MaintenanceList />} />
+          <Route path="office-budget" element={<BudgetScreen />} />
+          <Route path="inventory-stock" element={<InventoryScreen />} />
+          <Route path="procurement" element={<ProcurementScreen />} />
         </Route>
 
         {/* Catch-all */}

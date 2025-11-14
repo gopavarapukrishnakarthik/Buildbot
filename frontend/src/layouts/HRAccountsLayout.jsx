@@ -59,7 +59,7 @@ const sidebarItems = [
   },
   {
     name: "Inventory & Stocks",
-    path: "/accounts-dashboard/inventory-stocks",
+    path: "/accounts-dashboard/inventory-stock",
     icon: Boxes,
   },
   {
@@ -69,10 +69,11 @@ const sidebarItems = [
   },
 
   {
-    name: "Procuremnents",
-    path: "/accounts-dashboard/reports",
+    name: "Procurement",
+    path: "/accounts-dashboard/procurement",
     icon: ShoppingCart,
   },
+
   {
     name: "Settings",
     path: "/accounts-dashboard/settings",
@@ -131,7 +132,7 @@ export default function HRAccountsLayout() {
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to="/portal-dashboard">Dashboard</Link>
+                  <Link to="/accounts-dashboard">Dashboard</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
